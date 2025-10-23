@@ -3,53 +3,75 @@ package ru.kata.spring.boot_security.demo.controllers;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.*;
+import ru.kata.spring.boot_security.demo.entities.Role;
+import ru.kata.spring.boot_security.demo.entities.User;
+import ru.kata.spring.boot_security.demo.services.RoleService;
 import ru.kata.spring.boot_security.demo.services.UserService;
-import ru.kata.spring.boot_security.demo.services.RoleService; // <-- не забудь импорт
 
 import java.security.Principal;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Controller
+@PreAuthorize("hasRole('ADMIN')")
 public class MainController {
 
     private final UserService userService;
     private final RoleService roleService;
 
-    // Конструкторное внедрение без Lombok
     public MainController(UserService userService, RoleService roleService) {
         this.userService = userService;
         this.roleService = roleService;
     }
 
-    @GetMapping("/")
-    public String starterPage() {
-        return "redirect:/index";
-    }
-
-    @GetMapping("/index")
-    public String homePage() {
-        return "index";
-    }
-
-    @GetMapping("/login")
-    public String login() {
-        return "login";
-    }
-
     @GetMapping("/user")
-    public String pageForReadProfile() {
+    public String pageForReadProfile(Model model, Principal principal) {
+        User user = userService.findByUsername(principal.getName());
+        model.addAttribute("user", user);
         return "user";
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin")
     public String admin(Model model, Principal principal) {
-        model.addAttribute("users", userService.findAll());       // список пользователей для таблицы
-        model.addAttribute("allRoles", roleService.findAll());    // список ролей для модалки
+        model.addAttribute("users", userService.findAll());
+        model.addAttribute("allRoles", roleService.findAll());
+        model.addAttribute("userForm", new User());
         if (principal != null) {
-            model.addAttribute("currentUser",
-                    userService.findByUsername(principal.getName())); // текущий админ (опционально)
+            model.addAttribute("currentUser", userService.findByUsername(principal.getName()));
         }
         return "admin";
+    }
+
+    @PostMapping("/admin/users")
+    public String create(@ModelAttribute("userForm") User user,
+                         @RequestParam(name = "roleIds", required = false) List<Long> roleIds) {
+        Set<Role> roles = roleIds == null || roleIds.isEmpty()
+                ? new HashSet<>()
+                : new HashSet<>(roleService.findAllById(roleIds));
+        user.setRoles(roles);
+        userService.save(user);
+        return "redirect:/admin";
+    }
+
+    @PostMapping("/admin/users/{id}")
+    public String update(@PathVariable Long id,
+                         @ModelAttribute User user,
+                         @RequestParam(name = "roleIds", required = false) List<Long> roleIds) {
+        user.setId(id);
+        Set<Role> roles = roleIds == null || roleIds.isEmpty()
+                ? Collections.emptySet()
+                : new HashSet<>(roleService.findAllById(roleIds));
+        user.setRoles(roles);
+        userService.save(user);
+        return "redirect:/admin";
+    }
+
+    @DeleteMapping("/admin/users/{id}")
+    public String delete(@PathVariable Long id) {
+        userService.deleteById(id);
+        return "redirect:/admin";
     }
 }
