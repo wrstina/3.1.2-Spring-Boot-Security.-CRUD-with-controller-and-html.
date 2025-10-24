@@ -17,22 +17,16 @@ import java.util.Set;
 
 @Controller
 @PreAuthorize("hasRole('ADMIN')")
-public class MainController {
+public class AdminController {
 
     private final UserService userService;
     private final RoleService roleService;
 
-    public MainController(UserService userService, RoleService roleService) {
+    public AdminController(UserService userService, RoleService roleService) {
         this.userService = userService;
         this.roleService = roleService;
     }
 
-    @GetMapping("/user")
-    public String pageForReadProfile(Model model, Principal principal) {
-        User user = userService.findByUsername(principal.getName());
-        model.addAttribute("user", user);
-        return "user";
-    }
 
     @GetMapping("/admin")
     public String admin(Model model, Principal principal) {

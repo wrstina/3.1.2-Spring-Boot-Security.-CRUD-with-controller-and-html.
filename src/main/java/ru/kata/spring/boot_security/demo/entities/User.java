@@ -1,8 +1,7 @@
 package ru.kata.spring.boot_security.demo.entities;
 
-
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import javax.persistence.*;
 import javax.validation.constraints.Email;
@@ -11,11 +10,10 @@ import javax.validation.constraints.Size;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "users")
-public class User {
+public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,54 +36,47 @@ public class User {
     @Column(nullable = false)
     private int age;
 
-    @Column(name = "enabled", nullable = false)
-    private boolean enabled = true;
-
-    @Column(name = "account_non_expired", nullable = false)
-    private boolean accountNonExpired = true;
-
-    @Column(name = "account_non_locked", nullable = false)
-    private boolean accountNonLocked = true;
-
-    @Column(name = "credentials_non_expired", nullable = false)
-    private boolean credentialsNonExpired = true;
-
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.getAuthority()))
-                .collect(Collectors.toList());
-    }
-
-    public boolean isEnabled() {return enabled;}
-
-    public boolean isAccountNonExpired() {return accountNonExpired;}
-
-    public boolean isAccountNonLocked() {return accountNonLocked;}
-
-    public boolean isCredentialsNonExpired() {return credentialsNonExpired;}
-
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
             name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id")
     )
-    private Set<Role> roles = new HashSet<>(); // пользователь не может иметь две одинаковыные роли
+    private Set<Role> roles = new HashSet<>();
 
-    public User() {}// hiber
+    public User() {} // hiber
+
     public User(String username, String password, String email, int age) {
         this.username = username;
         this.password = password;
         this.email = email;
         this.age = age;
     }
-    // геттеры и сеттеры для изменения данных через api
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {return new HashSet<>(roles);}
+
+    @Override
+    public boolean isAccountNonExpired() {return true;}
+
+    @Override
+    public boolean isAccountNonLocked() {return true;}
+
+    @Override
+    public boolean isCredentialsNonExpired() {return true;}
+
+    @Override
+    public boolean isEnabled() {return true;}
+
+
     public Long getId() {return id;}
     public void setId(Long id) {this.id = id;}
 
+    @Override
     public String getUsername() {return username;}
     public void setUsername(String username) {this.username = username;}
 
+    @Override
     public String getPassword() {return password;}
     public void setPassword(String password) {this.password = password;}
 
